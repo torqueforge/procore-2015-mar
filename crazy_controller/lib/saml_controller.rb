@@ -1,5 +1,3 @@
-require_relative '../spec/spec_helper'
-
 class SamlController < DummyController
   attr_reader :saml_destination_path
 
