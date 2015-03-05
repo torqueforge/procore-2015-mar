@@ -1,15 +1,11 @@
-class SamlController < ApplicationController
+require_relative '../spec/spec_helper'
 
-  before_filter :load_saml_response, only: :create
-
-  def new
-    request = Onelogin::Saml::Authrequest.new
-    redirect_to request.create(saml_settings)
-  end
+class SamlController < DummyController
+  attr_reader :saml_destination_path
 
   def create
-    show_test_interstitial_or_redirect(root_path) and return unless @response.is_valid?
-
+    load_saml_response
+    return show_test_interstitial_or_redirect(root_path) unless @response.is_valid?
     if saml_identity.account_id
       log_in_as saml_identity.account
       show_test_interstitial_or_redirect(redirect_path)
@@ -28,7 +24,7 @@ class SamlController < ApplicationController
 private
 
   def load_saml_response
-    @response = Onelogin::Saml::Response.new(params[:SAMLResponse])
+    @response = StandardResponse.new(params[:SAMLResponse])
     @response = HealthNetSamlResponse.new(params[:SAMLResponse]) if saml_settings.issuer == 'www.healthnet.com:omada'
 
     @response.settings = saml_settings
@@ -51,11 +47,11 @@ private
   end
 
   def deployment_code
-    identity_provider.deployments.first.code
+    identity_provider.deployment_code
   end
 
   def saml_settings
-    settings = Onelogin::Saml::Settings.new
+    settings = OneLoginSamlSettings.new
 
     settings.assertion_consumer_service_url = create_saml_url(deployment_code: deployment_code)
     settings.issuer                         = identity_provider.issuer
@@ -82,7 +78,7 @@ private
     begin
       @response.validate!
       nil
-    rescue Onelogin::Saml::ValidationError => e
+    rescue OneLoginSamlValidationError => e
       e.message
     end
   end

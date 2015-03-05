@@ -1,99 +1,87 @@
-require 'spec_helper'
+gem 'rspec', '~> 3.2'
 
-describe SamlController, 'GET #new' do
-  let(:idp) { :local }
-  let(:saml_params) { Rack::Utils.parse_query URI(response.redirect_url).query }
+require_relative '../spec/spec_helper'
+require_relative '../lib/collaborators'
+require_relative '../lib/saml_controller'
 
-  subject { get :new, idp: idp }
 
-  context 'without an idp parameter' do
-    subject { get :new }
+def post(action, args, cont=SamlController.new)
+  controller = cont || SamlController.new
 
-    it 'returns 404' do
-      expect { subject }.to raise_error ActionController::RoutingError
-    end
-  end
+  controller.params[:SAMLResponse] = args[:SAMLResponse]
+  controller.params[:idp] = args[:SAMLResponse][:idp_issuer]
 
-  context 'with a OneLogin idp parameter' do
-    let(:idp) { :onelogin }
-
-    it 'passes SAML request' do
-      subject
-      saml_params['SAMLRequest'].should be_present
-    end
-
-    it 'redirects to OneLogin' do
-      subject
-      response.should be_redirect
-      response.redirect_url.starts_with? 'https://app.onelogin.com/saml/metadata/221064'
-    end
-  end
-
-  context 'with an unknown IDP' do
-    let(:idp) { :unknown_idp }
-
-    it 'raises an exception' do
-      expect { subject }.to raise_error ActiveRecord::RecordNotFound
-    end
-  end
+  controller.create
+  controller
 end
 
+
 describe SamlController, '#POST create' do
-  let(:deployment) { deployments(:test_deployment) }
-  let(:idp_response) { open(Rails.root.join('testdata', 'saml', 'idp_response.xml'), 'rb') { |io| io.read } }
-  let(:account) { accounts(:participant) }
+  let(:idp_response) { {} }
+  let(:account) { AccountDouble.new}
   let(:email) { account.email }
-  let(:idp_issuer) { 'OmadaHealthLocalSAMLIdentityProvider' }
+  let(:idp_issuer) { 'ValidSAMLIdentityProvider' }
 
-  subject { post :create, SAMLResponse: idp_response }
-
-  before { idp_response.gsub! '$$EMAIL$$', email }
-  before { idp_response.gsub! '$$IDP_ISSUER$$', idp_issuer }
+  before do
+    idp_response[:email]        = email
+    idp_response[:idp_issuer]   = idp_issuer
+    idp_response[:first_name]   = 'Terry'
+    idp_response[:last_name]    = 'Bradshaw'
+    idp_response[:phone_number] = '867-5309'
+    idp_response[:zip_code]     = '12345'
+    idp_response[:name_id]      = nil
+  end
 
   context 'with an unknown IDP' do
     let(:idp_issuer) { 'BogoSAMLIdentityProvider' }
 
     it 'raises an exception' do
-      expect { subject }.to raise_error ActiveRecord::RecordNotFound
+      expect { post :create, SAMLResponse: idp_response }.to(
+        raise_error ActiveRecord::RecordNotFound)
     end
   end
 
   context 'with an invalid response' do
     before do
-      Onelogin::Saml::Response.any_instance.stub(:is_valid?).and_return(false)
+      StandardResponse.any_instance.stub(:is_valid?).and_return(false)
     end
 
     it 'should redirect to the root_path' do
-      subject
-      response.should redirect_to root_path
+      controller = SamlController.new
+      expect(controller).to receive(:redirect_to).with("this/is/the/root/path")
+      post(:create, {SAMLResponse: idp_response}, controller)
     end
+
   end
 
   context 'with a valid response' do
-    before { Onelogin::Saml::Response.any_instance.stub(:is_valid?).and_return(true) }
+    before { StandardResponse.any_instance.stub(:is_valid?).and_return(true) }
 
     context 'when test mode is on' do
       before do
-        idp = SamlIdentityProvider.find_by_issuer(idp_issuer)
-        idp.test_mode = true
-        idp.save!
+        SamlIdentityProvider.any_instance.stub(:test_mode?).and_return(true)
+        idp_response[:name_id] = 'nameid1'
       end
 
       it 'shows the test interstitial' do
-        subject
-        expect{ response }.to render_template 'test_interstitial'
+        controller = SamlController.new
+        expect(controller).to receive(:render).with('test_interstitial')
+        post(:create, {SAMLResponse: idp_response}, controller)
       end
 
       it 'assigns the redirect path' do
-        subject
-        expect(assigns[:saml_destination_path]).to eq redirect_path
+        controller = post(:create, {SAMLResponse: idp_response}, controller)
+        expect(controller.saml_destination_path).to eq "this/is/the/redirect/path"
       end
     end
 
     context 'when test mode is off' do
+     before { idp_response[:name_id] = 'nameid1'}
+
       it 'redirects to the redirect_path' do
-        subject
-        expect{ response }.to redirect_to redirect_path
+        controller = SamlController.new
+        expect(controller).to receive(:redirect_to).with("this/is/the/redirect/path")
+        post(:create, {SAMLResponse: idp_response}, controller)
       end
     end
 
@@ -103,13 +91,13 @@ describe SamlController, '#POST create' do
       context 'for a new applicant' do
         subject { post :create, SAMLResponse: idp_response }
 
-        it 'creates a SAML identity' do
-          expect{ subject }.to change{ SamlIdentity.count }.by 1
-        end
+        # it 'creates a SAML identity' do
+        #   expect{ subject }.to change{ SamlIdentity.count }.by 1
+        # end
 
         it 'stores response attributes in the session for later usage' do
-          subject
-          attributes = session[:saml_attributes]
+          controller = post(:create, {SAMLResponse: idp_response})
+          attributes = controller.session[:saml_attributes]
           expect(attributes[:first_name]).to eq('Terry')
           expect(attributes[:last_name]).to eq('Bradshaw')
           expect(attributes[:email]).to eq('userWeHaveNeverSeenBefore@example.com')
@@ -118,24 +106,27 @@ describe SamlController, '#POST create' do
         end
 
         it 'stores the SAML identity id in the session' do
-          subject
-          expect(session[:saml_identity_id]).to be_present
+          controller = post(:create, {SAMLResponse: idp_response})
+          expect(controller.session[:saml_identity_id]).to be
         end
 
         it 'redirects to the deployment-specific show page' do
-          subject
-          expect{ response }.to redirect_to deployment_shortcode_path(deployment.code)
+          controller = SamlController.new
+          expect(controller).to receive(:redirect_to).with("deployment/shortcode/for/a deployment_code")
+          post(:create, {SAMLResponse: idp_response}, controller)
         end
       end
 
       context 'when there is already a consumer application for this email address' do
-        let(:consumer_application) { account.consumer_application }
-
-        before { consumer_application.update_attributes!(email: email) }
+        before do
+          consumer_application = double('consumer_application')
+          allow(consumer_application).to receive(:to_param) { nil }
+          SamlIdentity.any_instance.stub(:consumer_application).and_return(consumer_application)
+        end
 
         it 'does not store the consumer application id in the session' do
-          subject
-          expect(session[ConsumerApplication::SESSION_KEY]).to_not be_present
+          controller = post(:create, {SAMLResponse: idp_response})
+          expect(controller.session[ConsumerApplication::SESSION_KEY]).to_not be
         end
       end
     end
@@ -143,71 +134,82 @@ describe SamlController, '#POST create' do
     context 'for a visitor with a SAML identity' do
 
       context 'who does not have a consumer application' do
-        let(:identity) { saml_identities(:local_saml_identity) }
-        let(:email) { identity.name_id }
-
-        it 'does not create a SAML identity' do
-          expect{ subject }.to_not change(SamlIdentity, :count)
+        before do
+          SamlIdentity.any_instance.stub(:consumer_application).and_return(nil)
         end
 
+  #       it 'does not create a SAML identity' do
+  #         expect{ subject }.to_not change(SamlIdentity, :count)
+  #       end
+
         it 'stores response attributes in the session for later usage' do
-          subject
-          expect(session[:saml_attributes]).to be_present
+          controller = post(:create, {SAMLResponse: idp_response})
+          expect(controller.session[:saml_attributes]).to be
         end
 
         it 'stores the SAML identity id in the session' do
-          subject
-          expect(session[:saml_identity_id]).to be_present
+          controller = post(:create, {SAMLResponse: idp_response})
+          expect(controller.session[:saml_identity_id]).to be
+
         end
 
         it 'redirects to the deployment-specific show page' do
-          subject
-          expect{ response }.to redirect_to deployment_shortcode_path(deployment.code)
+          controller = SamlController.new
+          expect(controller).to receive(:redirect_to).with("deployment/shortcode/for/a deployment_code")
+          post(:create, {SAMLResponse: idp_response}, controller)
         end
       end
 
       context 'who has an un-submitted consumer application' do
-        let(:identity) { saml_identities(:with_step2_application) }
-        let(:consumer_application) { identity.consumer_application }
-        let(:email) { identity.name_id }
+  #       let(:identity) { saml_identities(:with_step2_application) }
+  #       let(:consumer_application) { identity.consumer_application }
+  #       let(:email) { identity.name_id }
 
-        it 'sets the session consumer_application_id for this application' do
-          subject
-          expect(session[:consumer_application_id]).to eq consumer_application.to_param
-        end
+  #       it 'sets the session consumer_application_id for this application' do
+  #         subject
+  #         expect(session[:consumer_application_id]).to eq consumer_application.to_param
+  #       end
 
+        before { idp_response[:name_id] = 'nameid1'}
         it 'redirects them to the appropriate page' do
-          subject
-          expect{ response }.to redirect_to redirect_path
+          controller = SamlController.new
+          expect(controller).to receive(:redirect_to).with("this/is/the/redirect/path")
+          post(:create, {SAMLResponse: idp_response}, controller)
         end
       end
 
       context 'who has a submitted application' do
-        let(:identity) { saml_identities(:with_submitted_application) }
-        let(:consumer_application) { identity.consumer_application }
-        let(:email) { identity.name_id }
+  #       let(:identity) { saml_identities(:with_submitted_application) }
+  #       let(:consumer_application) { identity.consumer_application }
+  #       let(:email) { identity.name_id }
 
-        it 'sets the session consumer_application_id for this application' do
-          subject
-          expect(session[:consumer_application_id]).to eq consumer_application.to_param
-        end
+  #       it 'sets the session consumer_application_id for this application' do
+  #         subject
+  #         expect(session[:consumer_application_id]).to eq consumer_application.to_param
+  #       end
 
+        before { idp_response[:name_id] = 'nameid1'}
         it 'redirects them to the appropriate page' do
-          subject
-          expect{ response }.to redirect_to redirect_path
+          controller = SamlController.new
+          expect(controller).to receive(:redirect_to).with("this/is/the/redirect/path")
+          post(:create, {SAMLResponse: idp_response}, controller)
         end
       end
     end
 
     context 'for an existing user with a SAML identity' do
+      before { idp_response[:name_id] = 'nameid1'}
+
       it 'should log them in' do
-        subject
-        session[:account_id].should == account.id
+          controller = SamlController.new
+          expect(controller).to receive(:log_in_as).with("an account")
+          post(:create, {SAMLResponse: idp_response}, controller)
       end
 
-      it 'redirects to redirect_path' do
-        subject
-        expect{ response }.to redirect_to redirect_path
+      it 'redirects them to the appropriate page' do
+        controller = SamlController.new
+        expect(controller).to receive(:redirect_to).with("this/is/the/redirect/path")
+        post(:create, {SAMLResponse: idp_response}, controller)
       end
     end
   end
