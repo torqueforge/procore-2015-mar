@@ -18,8 +18,7 @@ end
 
 describe SamlController, '#POST create' do
   let(:idp_response) { {} }
-  let(:account) { AccountDouble.new}
-  let(:email) { account.email }
+  let(:email) { "existingUser@example.com" }
   let(:idp_issuer) { 'ValidSAMLIdentityProvider' }
 
   before do

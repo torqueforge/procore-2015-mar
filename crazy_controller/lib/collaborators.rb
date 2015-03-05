@@ -1,9 +1,3 @@
-class AccountDouble
-  def email
-    "existingUser@example.com"
-  end
-end
-
 class ConsumerApplication
   SESSION_KEY = nil
 end
