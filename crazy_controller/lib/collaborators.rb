@@ -1,5 +1,111 @@
 require 'pry'
 
+class SamlIdentityCreator
+  attr_reader :controller, :identity_provider, :saml_response_param, :response, :identity
+
+  def initialize(controller, idp_param, saml_response_param)
+    @controller          = controller
+    @saml_response_param = saml_response_param
+
+    @identity_provider   = SamlIdentityProvider.for_name(idp_param)
+    @response            = build_response
+    @identity            = retrieve_identity
+  end
+
+  def account
+    identity.account
+  end
+
+
+  #################### response
+  def build_response
+    response_class =
+      if identity_provider.issuer == 'www.healthnet.com:omada'
+        HealthNetSamlResponse
+      else
+        StandardResponse
+      end
+
+    saml_settings = OneLoginSamlSettings.new
+    saml_settings.assertion_consumer_service_url = saml_url
+    saml_settings.issuer                         = identity_provider.issuer
+    saml_settings.idp_sso_target_url             = identity_provider.target_url
+    saml_settings.idp_cert_fingerprint           = identity_provider.fingerprint
+
+    response = response_class.new(saml_response_param)
+
+    response.settings = saml_settings
+    response
+  end
+
+  def validate_response!
+  end
+
+  def response_errors
+    begin
+      validate_response!
+      nil
+    rescue OneLoginSamlValidationError => e
+      e.message
+    end
+  end
+
+  ###################
+  def retrieve_identity
+    identity_provider.saml_identity_for_name_id(response.name_id)
+  end
+
+
+  #################### ontroller is responsible for urls and paths
+  def saml_url
+    controller.create_saml_url(deployment_code: identity_provider.deployment_code)
+  end
+
+  def deployment_shortcode_path
+    controller.deployment_shortcode_path(identity_provider.deployment_code)
+  end
+
+
+  ###################
+  def test_mode?
+    identity_provider.test_mode?
+  end
+
+  def should_process_as_existing_saml?
+    has_saml_account? || has_saml_consumer_application?
+  end
+
+  def has_saml_account?
+    identity.account_id
+  end
+
+  def has_saml_consumer_application?
+    identity.consumer_application
+  end
+
+  def valid_response?
+    true
+  end
+
+  def invalid_response?
+    !valid_response?
+  end
+
+
+  #################### conversions
+  def identity_as_param
+    identity.to_param
+  end
+
+  def consumer_application_as_param
+    identity.consumer_application.to_param
+  end
+
+  def translated_response_attributes
+    identity_provider.translated_attributes(response.attributes)
+  end
+end
+
 class ConsumerApplication
   SESSION_KEY = nil
 end

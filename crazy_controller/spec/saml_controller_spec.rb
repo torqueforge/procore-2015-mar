@@ -42,7 +42,7 @@ describe SamlController, '#POST create' do
 
   context 'with an invalid response' do
     before do
-      StandardResponse.any_instance.stub(:is_valid?).and_return(false)
+      SamlIdentityCreator.any_instance.stub(:valid_response?).and_return(false)
     end
 
     it 'should redirect to the root_path' do

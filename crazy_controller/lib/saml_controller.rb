@@ -1,55 +1,33 @@
 class SamlController < DummyController
-  attr_reader :saml_destination_path, :response, :identity_provider
+  attr_reader :saml_destination_path, :response, :identity_provider, :identity_creator
 
   def create
-    @identity_provider = SamlIdentityProvider.for_name(params[:idp])
+    @identity_creator = SamlIdentityCreator.new(self, params[:idp], params[:SAMLResponse])
 
-    @response =
-      identity_provider.response(
-        create_saml_url(deployment_code: identity_provider.deployment_code),
-        params[:SAMLResponse])
+    log_in_as identity_creator.account
 
-    saml_identity = identity_provider.saml_identity_for_name_id(response.name_id)
-
-    log_in_as saml_identity.account
-
-    if !response.is_valid?
-      target_path = root_path
-
-    elsif saml_identity.account_id || saml_identity.consumer_application
-      target_path = redirect_path
-
-    elsif saml_identity.consumer_application
-      session[ConsumerApplication::SESSION_KEY] = saml_identity.consumer_application.to_param
-
-    else
-      session[:saml_attributes]  = identity_provider.translated_attributes(response.attributes)
-      session[:saml_identity_id] = saml_identity.to_param
-      target_path = deployment_shortcode_path(identity_provider.deployment_code)
-    end
-
-    show_test_interstitial_or_redirect(target_path)
-  end
-
-private
-
-  def show_test_interstitial_or_redirect(redirect_path)
-    if identity_provider.test_mode?
+    if identity_creator.test_mode?
       @saml_destination_path = redirect_path
-      @validation_errors     = response_errors
-      render 'test_interstitial'
-    else
-      redirect_to redirect_path
+      @validation_errors     = identity_creator.response_errors
+      return render 'test_interstitial'
     end
-  end
 
-  def response_errors
-    begin
-      response.validate!
-      nil
-    rescue OneLoginSamlValidationError => e
-      e.message
+    if identity_creator.invalid_response?
+      return redirect_to root_path
     end
+
+    if identity_creator.has_saml_account?
+      return redirect_to redirect_path
+    end
+
+    if identity_creator.has_saml_consumer_application?
+      session[ConsumerApplication::SESSION_KEY] = identity_creator.consumer_application_as_param
+      return redirect_to redirect_path
+    end
+
+    session[:saml_attributes]  = identity_creator.translated_response_attributes
+    session[:saml_identity_id] = identity_creator.identity_as_param
+    redirect_to identity_creator.deployment_shortcode_path
   end
 
 end
