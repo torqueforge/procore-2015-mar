@@ -1,8 +1,15 @@
+require 'pry'
+
 class ConsumerApplication
   SESSION_KEY = nil
 end
 
 class SamlIdentityProvider
+  def self.for_name(name)
+    raise ActiveRecord::RecordNotFound if name == 'BogoSAMLIdentityProvider'
+    return SamlIdentityProvider.new
+  end
+
   def self.where(hsh)
     raise ActiveRecord::RecordNotFound if hsh[:name] == 'BogoSAMLIdentityProvider'
     return [SamlIdentityProvider.new]
@@ -32,6 +39,26 @@ class SamlIdentityProvider
 
   def translated_attributes(attrs)
     attrs
+  end
+
+  def response(saml_url, saml_response)
+    response_class =
+      if issuer == 'www.healthnet.com:omada'
+        HealthNetSamlResponse
+      else
+        StandardResponse
+      end
+
+    saml_settings = OneLoginSamlSettings.new
+    saml_settings.assertion_consumer_service_url = saml_url
+    saml_settings.issuer                         = issuer
+    saml_settings.idp_sso_target_url             = target_url
+    saml_settings.idp_cert_fingerprint           = fingerprint
+
+    response = response_class.new(saml_response)
+
+    response.settings = saml_settings
+    response
   end
 end
 
@@ -106,8 +133,8 @@ class StandardResponse
   def validate!
   end
 
-  def issuer
-  end
+  # def issuer
+  # end
 
   def attributes
     saml_response
