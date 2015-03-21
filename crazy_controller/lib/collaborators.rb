@@ -41,32 +41,9 @@ class SamlIdentityProvider
     attrs
   end
 
-  def response(saml_url, saml_response)
-    response_class =
-      if issuer == 'www.healthnet.com:omada'
-        HealthNetSamlResponse
-      else
-        StandardResponse
-      end
-
-    saml_settings = OneLoginSamlSettings.new
-    saml_settings.assertion_consumer_service_url = saml_url
-    saml_settings.issuer                         = issuer
-    saml_settings.idp_sso_target_url             = target_url
-    saml_settings.idp_cert_fingerprint           = fingerprint
-
-    response = response_class.new(saml_response)
-
-    response.settings = saml_settings
-    response
-  end
 end
 
 class SamlIdentity
-
-  # def self.count
-  #   1
-  # end
 
   attr_reader :account_id, :account
   def initialize(account_id=1,account='an account')
