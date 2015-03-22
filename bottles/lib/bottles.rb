@@ -4,27 +4,28 @@ module BottleNumberFactory
 
       case self
       when 0
-        num_containers    = ContainersOtherThanOneDescription.new
-        bottle_name       = NoInventory.new
-        amount_descriptor = ZeroAmountDescription.new
+        inventory         = NoInventory.new
+
       when 1
-        num_containers    = OneContainerDescription.new
-        bottle_name       = SomeInventory.new(self, take_descriptor: TakeLastOne.new)
-        amount_descriptor = MappedAmountDescription.new
+        inventory         = SomeInventory.new(number:     self,
+                                              container:  "bottle",
+                                              amount:     "1",
+                                              take:       "it")
+
       when 6
-        num_containers    = OneSixPackDescription.new
-        bottle_name       = SomeInventory.new(self, take_descriptor: TakeOneFromSixPack.new)
-        amount_descriptor = SixPackAmountDescription.new
+        inventory         = SomeInventory.new(number:     self,
+                                              container:  "6-pack",
+                                              amount:     "1",
+                                              take:       "a bottle")
+
       else
-        num_containers    = ContainersOtherThanOneDescription.new
-        bottle_name       = SomeInventory.new(self, take_descriptor: TakeOneOfMany.new)
-        amount_descriptor = MappedAmountDescription.new
+        inventory         = SomeInventory.new(number:     self,
+                                              container:  "bottles",
+                                              amount:     self.to_s,
+                                              take:       "one")
       end
 
-      BottleNumber.new(self,
-                       bottle_name:       bottle_name,
-                       num_containers:    num_containers,
-                       amount_descriptor: amount_descriptor)
+      BottleNumber.new(inventory: inventory)
     end
   end
 end
@@ -54,110 +55,53 @@ require 'forwardable'
 
 class BottleNumber
   extend Forwardable
-  def_delegators :bottle_name, :action, :successor
-  def_delegators :num_containers, :container, :pronoun
+  def_delegators :inventory, :action, :container, :amount, :next_verse_number
 
-  attr_reader :number, :bottle_name, :num_containers, :amount_descriptor
+  attr_reader :inventory
 
-  def initialize(number, bottle_name:, num_containers:, amount_descriptor:)
-    @number         = number
-    @bottle_name    = bottle_name
-    @num_containers = num_containers
-    @amount_descriptor = amount_descriptor
-  end
-
-  def amount
-    amount_descriptor.format(number)
+  def initialize(inventory:)
+    @inventory = inventory
   end
 
   def to_s
     "#{amount} #{container}"
   end
+
+  def successor
+    next_verse_number.to_bottle_number
+  end
 end
 
 ###############
 class NoInventory
-  def action
-    "Go to the store and buy some more"
+  attr_reader :container, :amount, :next_verse_number
+
+  def initialize
+    @container          = "bottles"
+    @amount             = "no more"
+    @next_verse_number  = 99
   end
 
-  def successor
-    99.to_bottle_number
+  def action
+    "Go to the store and buy some more"
   end
 end
 
 class SomeInventory
-  attr_reader :number, :take_descriptor
+  attr_reader :container, :amount, :number, :take
 
-  def initialize(number, take_descriptor:)
-    @number = number
-    @take_descriptor = take_descriptor
+  def initialize(container:, take:, amount:, number:)
+    @number     = number
+    @container  = container
+    @amount     = amount
+    @take       = take
   end
 
   def action
-    "Take #{take_descriptor.take} down and pass it around"
+    "Take #{take} down and pass it around"
   end
 
-  def successor
-    (number - 1).to_bottle_number
-  end
-end
-
-
-###############
-class OneContainerDescription
-  def container
-    "bottle"
-  end
-end
-
-class ContainersOtherThanOneDescription
-  def container
-    "bottles"
-  end
-end
-
-class OneSixPackDescription
-  def container
-    "6-pack"
-  end
-end
-
-
-###############
-class ZeroAmountDescription
-  def format(_)
-    'no more'
-  end
-end
-
-class MappedAmountDescription
-  def format(number)
-    number.to_s
-  end
-end
-
-class SixPackAmountDescription
-  def format(number)
-    '1'
-  end
-end
-
-###############
-class TakeLastOne
-  def take
-    'it'
-  end
-end
-
-class TakeOneOfMany
-  def take
-    'one'
-  end
-end
-
-class TakeOneFromSixPack
-  def take
-    'a bottle'
+  def next_verse_number
+    number - 1
   end
 end
