@@ -1,11 +1,20 @@
 module BottleNumberFactory
   refine Fixnum do
     def to_bottle_number
-      begin
-        Object.const_get("BottleNumber#{self}")
-      rescue
-        BottleNumber
-      end.new(self)
+
+      case self
+      when 0
+        bottle_name    = NoBottles.new
+        num_containers = ZeroOrMoreThanOneContainers.new
+      when 1
+        bottle_name    = SomeBottles.new(self)
+        num_containers = OneContainer.new
+      else
+        bottle_name    = SomeBottles.new(self)
+        num_containers = ZeroOrMoreThanOneContainers.new
+      end
+
+      BottleNumber.new(self, bottle_name: bottle_name, num_containers: num_containers)
     end
   end
 end
@@ -24,51 +33,44 @@ class Bottles
   def verse(number)
     bottle_number      = number.to_bottle_number
     next_bottle_number = bottle_number.successor
-    "#{bottle_number.amount.capitalize} #{bottle_number.container} of beer on the wall, " +
-    "#{bottle_number.amount} #{bottle_number.container} of beer.\n" +
+    "#{bottle_number} of beer on the wall, ".capitalize +
+    "#{bottle_number} of beer.\n" +
     "#{bottle_number.action}, " +
-    "#{next_bottle_number.amount} #{next_bottle_number.container} of beer on the wall.\n"
-  end
-
-  def bottle_number_for(number)
-    BottleNumber.for(number)
+    "#{next_bottle_number} of beer on the wall.\n"
   end
 end
+
+require 'forwardable'
 
 class BottleNumber
-  attr_reader :number
+  extend Forwardable
+  def_delegators :bottle_name, :amount, :successor
+  def_delegators :num_containers, :container, :pronoun
 
-  def initialize(number)
-    @number = number
+  attr_reader :number, :bottle_name, :num_containers
+
+  def initialize(number, bottle_name:, num_containers:)
+    @number         = number
+    @bottle_name    = bottle_name
+    @num_containers = num_containers
   end
 
-  def container
-    "bottles"
-  end
-
-  def pronoun
-    "one"
-  end
-
-  def amount
-    number.to_s
+  def to_s
+    "#{amount} #{container}"
   end
 
   def action
-    "Take #{pronoun} down and pass it around"
-  end
-
-  def successor
-    (number - 1).to_bottle_number
+    bottle_name.action(pronoun)
   end
 end
 
-class BottleNumber0 < BottleNumber
+###############
+class NoBottles
   def amount
-    "no more"
+    'no more'
   end
 
-  def action
+  def action(_)
     "Go to the store and buy some more"
   end
 
@@ -77,7 +79,29 @@ class BottleNumber0 < BottleNumber
   end
 end
 
-class BottleNumber1 < BottleNumber
+class SomeBottles
+  attr_reader :number
+
+  def initialize(number)
+    @number = number
+  end
+
+  def amount
+    number.to_s
+  end
+
+  def action(pronoun)
+    "Take #{pronoun} down and pass it around"
+  end
+
+  def successor
+    (number - 1).to_bottle_number
+  end
+end
+
+
+###############
+class OneContainer
   def container
     "bottle"
   end
@@ -86,3 +110,14 @@ class BottleNumber1 < BottleNumber
     "it"
   end
 end
+
+class ZeroOrMoreThanOneContainers
+  def container
+    "bottles"
+  end
+
+  def pronoun
+    "one"
+  end
+end
+
