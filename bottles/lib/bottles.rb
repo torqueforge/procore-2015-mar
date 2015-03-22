@@ -77,10 +77,6 @@ end
 
 ###############
 class NoInventory
-  def amount
-    'no more'
-  end
-
   def action
     "Go to the store and buy some more"
   end
@@ -96,10 +92,6 @@ class SomeInventory
   def initialize(number, take_descriptor:)
     @number = number
     @take_descriptor = take_descriptor
-  end
-
-  def amount
-    number.to_s
   end
 
   def action
