@@ -90,7 +90,7 @@ end
 class SomeInventory
   attr_reader :container, :amount, :number, :take
 
-  def initialize(container:, take:, amount:, number:)
+  def initialize(number:, container:, amount:, take:)
     @number     = number
     @container  = container
     @amount     = amount
