@@ -4,17 +4,27 @@ module BottleNumberFactory
 
       case self
       when 0
-        bottle_name    = NoBottles.new
-        num_containers = ZeroOrMoreThanOneContainers.new
+        num_containers    = ContainersOtherThanOneDescription.new
+        bottle_name       = NoInventory.new
+        amount_descriptor = ZeroAmountDescription.new
       when 1
-        bottle_name    = SomeBottles.new(self)
-        num_containers = OneContainer.new
+        num_containers    = OneContainerDescription.new
+        bottle_name       = SomeInventory.new(self, take_descriptor: TakeLastOne.new)
+        amount_descriptor = MappedAmountDescription.new
+      when 6
+        num_containers    = OneSixPackDescription.new
+        bottle_name       = SomeInventory.new(self, take_descriptor: TakeOneFromSixPack.new)
+        amount_descriptor = SixPackAmountDescription.new
       else
-        bottle_name    = SomeBottles.new(self)
-        num_containers = ZeroOrMoreThanOneContainers.new
+        num_containers    = ContainersOtherThanOneDescription.new
+        bottle_name       = SomeInventory.new(self, take_descriptor: TakeOneOfMany.new)
+        amount_descriptor = MappedAmountDescription.new
       end
 
-      BottleNumber.new(self, bottle_name: bottle_name, num_containers: num_containers)
+      BottleNumber.new(self,
+                       bottle_name:       bottle_name,
+                       num_containers:    num_containers,
+                       amount_descriptor: amount_descriptor)
     end
   end
 end
@@ -44,33 +54,34 @@ require 'forwardable'
 
 class BottleNumber
   extend Forwardable
-  def_delegators :bottle_name, :amount, :successor
+  def_delegators :bottle_name, :action, :successor
   def_delegators :num_containers, :container, :pronoun
 
-  attr_reader :number, :bottle_name, :num_containers
+  attr_reader :number, :bottle_name, :num_containers, :amount_descriptor
 
-  def initialize(number, bottle_name:, num_containers:)
+  def initialize(number, bottle_name:, num_containers:, amount_descriptor:)
     @number         = number
     @bottle_name    = bottle_name
     @num_containers = num_containers
+    @amount_descriptor = amount_descriptor
+  end
+
+  def amount
+    amount_descriptor.format(number)
   end
 
   def to_s
     "#{amount} #{container}"
   end
-
-  def action
-    bottle_name.action(pronoun)
-  end
 end
 
 ###############
-class NoBottles
+class NoInventory
   def amount
     'no more'
   end
 
-  def action(_)
+  def action
     "Go to the store and buy some more"
   end
 
@@ -79,19 +90,20 @@ class NoBottles
   end
 end
 
-class SomeBottles
-  attr_reader :number
+class SomeInventory
+  attr_reader :number, :take_descriptor
 
-  def initialize(number)
+  def initialize(number, take_descriptor:)
     @number = number
+    @take_descriptor = take_descriptor
   end
 
   def amount
     number.to_s
   end
 
-  def action(pronoun)
-    "Take #{pronoun} down and pass it around"
+  def action
+    "Take #{take_descriptor.take} down and pass it around"
   end
 
   def successor
@@ -101,23 +113,59 @@ end
 
 
 ###############
-class OneContainer
+class OneContainerDescription
   def container
     "bottle"
   end
-
-  def pronoun
-    "it"
-  end
 end
 
-class ZeroOrMoreThanOneContainers
+class ContainersOtherThanOneDescription
   def container
     "bottles"
   end
+end
 
-  def pronoun
-    "one"
+class OneSixPackDescription
+  def container
+    "6-pack"
   end
 end
 
+
+###############
+class ZeroAmountDescription
+  def format(_)
+    'no more'
+  end
+end
+
+class MappedAmountDescription
+  def format(number)
+    number.to_s
+  end
+end
+
+class SixPackAmountDescription
+  def format(number)
+    '1'
+  end
+end
+
+###############
+class TakeLastOne
+  def take
+    'it'
+  end
+end
+
+class TakeOneOfMany
+  def take
+    'one'
+  end
+end
+
+class TakeOneFromSixPack
+  def take
+    'a bottle'
+  end
+end
