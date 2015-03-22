@@ -1,6 +1,6 @@
-module BottleNumberFactory
+module ContainerNumberFactory
   refine Fixnum do
-    def to_bottle_number
+    def to_container_number
 
       case self
       when 0
@@ -25,12 +25,12 @@ module BottleNumberFactory
                                               take:       "one")
       end
 
-      BottleNumber.new(inventory: inventory)
+      ContainerNumber.new(inventory: inventory)
     end
   end
 end
 
-using BottleNumberFactory
+using ContainerNumberFactory
 
 class Bottles
   def song
@@ -42,7 +42,7 @@ class Bottles
   end
 
   def verse(number)
-    bottle_number      = number.to_bottle_number
+    bottle_number      = number.to_container_number
     next_bottle_number = bottle_number.successor
     "#{bottle_number} of beer on the wall, ".capitalize +
     "#{bottle_number} of beer.\n" +
@@ -53,7 +53,7 @@ end
 
 require 'forwardable'
 
-class BottleNumber
+class ContainerNumber
   extend Forwardable
   def_delegators :inventory, :action, :container, :amount, :next_verse_number
 
@@ -68,7 +68,7 @@ class BottleNumber
   end
 
   def successor
-    next_verse_number.to_bottle_number
+    next_verse_number.to_container_number
   end
 end
 
@@ -88,7 +88,7 @@ class NoInventory
 end
 
 class SomeInventory
-  attr_reader :container, :amount, :number, :take
+  attr_reader :number, :container, :amount, :take
 
   def initialize(number:, container:, amount:, take:)
     @number     = number
