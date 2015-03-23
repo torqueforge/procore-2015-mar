@@ -1,13 +1,18 @@
 require 'pry'
 
 class SamlIdentityCreator
-  attr_reader :controller, :identity_provider, :saml_response_param, :response, :identity
+  attr_reader :controller, :identity_provider, :saml_response_param,
+              :identity, :response,
+              :response_class, :saml_settings
 
   def initialize(controller, idp_param, saml_response_param)
     @controller          = controller
     @saml_response_param = saml_response_param
 
     @identity_provider   = SamlIdentityProvider.for_name(idp_param)
+    @saml_settings       = OneLoginSamlSettings.new
+
+    @response_class      = determine_response_class
     @response            = build_response
     @identity            = retrieve_identity
   end
@@ -19,14 +24,6 @@ class SamlIdentityCreator
 
   #################### response
   def build_response
-    response_class =
-      if identity_provider.issuer == 'www.healthnet.com:omada'
-        HealthNetSamlResponse
-      else
-        StandardResponse
-      end
-
-    saml_settings = OneLoginSamlSettings.new
     saml_settings.assertion_consumer_service_url = saml_url
     saml_settings.issuer                         = identity_provider.issuer
     saml_settings.idp_sso_target_url             = identity_provider.target_url
@@ -50,9 +47,18 @@ class SamlIdentityCreator
     end
   end
 
+
   ###################
   def retrieve_identity
     identity_provider.saml_identity_for_name_id(response.name_id)
+  end
+
+  def determine_response_class
+    if identity_provider.issuer == 'www.healthnet.com:omada'
+      HealthNetSamlResponse
+    else
+      StandardResponse
+    end
   end
 
 
