@@ -84,10 +84,10 @@ Take one down and pass it around, 98 bottles of beer on the wall.
 Take one down and pass it around, 97 bottles of beer on the wall.
 
 97 bottles of beer on the wall, 97 bottles of beer.
-Take one down and pass it around, 96 bottles of beer on the wall.
+Take one down and pass it around, 4 cases of beer on the wall.
 
-96 bottles of beer on the wall, 96 bottles of beer.
-Take one down and pass it around, 95 bottles of beer on the wall.
+4 cases of beer on the wall, 4 cases of beer.
+Take a bottle down and pass it around, 95 bottles of beer on the wall.
 
 95 bottles of beer on the wall, 95 bottles of beer.
 Take one down and pass it around, 94 bottles of beer on the wall.
@@ -156,10 +156,10 @@ Take one down and pass it around, 74 bottles of beer on the wall.
 Take one down and pass it around, 73 bottles of beer on the wall.
 
 73 bottles of beer on the wall, 73 bottles of beer.
-Take one down and pass it around, 72 bottles of beer on the wall.
+Take one down and pass it around, 3 cases of beer on the wall.
 
-72 bottles of beer on the wall, 72 bottles of beer.
-Take one down and pass it around, 71 bottles of beer on the wall.
+3 cases of beer on the wall, 3 cases of beer.
+Take a bottle down and pass it around, 71 bottles of beer on the wall.
 
 71 bottles of beer on the wall, 71 bottles of beer.
 Take one down and pass it around, 70 bottles of beer on the wall.
@@ -228,10 +228,10 @@ Take one down and pass it around, 50 bottles of beer on the wall.
 Take one down and pass it around, 49 bottles of beer on the wall.
 
 49 bottles of beer on the wall, 49 bottles of beer.
-Take one down and pass it around, 48 bottles of beer on the wall.
+Take one down and pass it around, 2 cases of beer on the wall.
 
-48 bottles of beer on the wall, 48 bottles of beer.
-Take one down and pass it around, 47 bottles of beer on the wall.
+2 cases of beer on the wall, 2 cases of beer.
+Take a bottle down and pass it around, 47 bottles of beer on the wall.
 
 47 bottles of beer on the wall, 47 bottles of beer.
 Take one down and pass it around, 46 bottles of beer on the wall.
@@ -300,10 +300,10 @@ Take one down and pass it around, 26 bottles of beer on the wall.
 Take one down and pass it around, 25 bottles of beer on the wall.
 
 25 bottles of beer on the wall, 25 bottles of beer.
-Take one down and pass it around, 24 bottles of beer on the wall.
+Take one down and pass it around, 1 case of beer on the wall.
 
-24 bottles of beer on the wall, 24 bottles of beer.
-Take one down and pass it around, 23 bottles of beer on the wall.
+1 case of beer on the wall, 1 case of beer.
+Take a bottle down and pass it around, 23 bottles of beer on the wall.
 
 23 bottles of beer on the wall, 23 bottles of beer.
 Take one down and pass it around, 22 bottles of beer on the wall.

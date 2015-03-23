@@ -9,19 +9,32 @@ module ContainerNumberFactory
       when 1
         inventory         = SomeInventory.new(number:     self,
                                               container:  "bottle",
-                                              amount:     "1",
+                                              quantity:   1,
                                               take:       "it")
+
+      when lambda {|num| num % 24 == 0}
+        inventory         = SomeInventory.new(number:     self,
+                                              container:  "cases",
+                                              quantity:   self / 24,
+                                              take:       "a bottle")
+
+
+      # when lambda {|num| num % 6 == 0}
+      #   inventory         = SomeInventory.new(number:     self,
+      #                                         container:  "6-packs",
+      #                                         quantity:   self / 6,
+      #                                         take:       "a bottle")
 
       when 6
         inventory         = SomeInventory.new(number:     self,
                                               container:  "6-pack",
-                                              amount:     "1",
+                                              quantity:   1,
                                               take:       "a bottle")
 
       else
         inventory         = SomeInventory.new(number:     self,
                                               container:  "bottles",
-                                              amount:     self.to_s,
+                                              quantity:   self,
                                               take:       "one")
       end
 
@@ -55,7 +68,8 @@ require 'forwardable'
 
 class ContainerNumber
   extend Forwardable
-  def_delegators :inventory, :action, :container, :amount, :next_verse_number
+  def_delegators :inventory,
+                    :action, :container, :amount, :next_verse_number
 
   attr_reader :inventory
 
@@ -88,17 +102,25 @@ class NoInventory
 end
 
 class SomeInventory
-  attr_reader :number, :container, :amount, :take
+  attr_reader :number, :containers, :quantity, :take
 
-  def initialize(number:, container:, amount:, take:)
+  def initialize(number:, container:, quantity: nil, amount: nil, take:)
     @number     = number
-    @container  = container
-    @amount     = amount
+    @containers = container
+    @quantity   = quantity
     @take       = take
   end
 
   def action
     "Take #{take} down and pass it around"
+  end
+
+  def amount
+    quantity.to_s
+  end
+
+  def container
+    quantity == 1 ? containers.gsub(/s$/, '') : containers
   end
 
   def next_verse_number
