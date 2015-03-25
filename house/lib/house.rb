@@ -13,6 +13,12 @@ class House
       "the malt that lay in",
       "the house that Jack built"]
 
+  attr_reader :phrases
+
+  def initialize
+    @phrases = PHRASES
+  end
+
   def recite
     1.upto(12).collect {|i| line(i)}.join("\n")
   end
@@ -22,7 +28,7 @@ class House
   end
 
   def phrase(num)
-    PHRASES.last(num).join(" ")
+    phrases.last(num).join(" ")
   end
 end
 
